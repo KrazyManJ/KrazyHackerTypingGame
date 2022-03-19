@@ -7,9 +7,12 @@ from pygame import gfxdraw, mixer
 
 pygame.init()
 
-screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN, pygame.SRCALPHA)
-#screen = pygame.display.set_mode((1280, 720), pygame.SRCALPHA)
-pygame.display.set_caption("KrazyGame")
+FULLSCREEN = False
+
+
+pygame.display.set_icon(pygame.image.load(os.path.join("src","krazyhackertypinggame.png")))
+pygame.display.set_caption("KrazyHackerTypingGame",os.path.join("src","krazyhackertypinggame.png"))
+screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN) if FULLSCREEN else pygame.display.set_mode((1280, 720))
 
 
 class Color:
@@ -24,6 +27,29 @@ class Sound:
     key = pygame.mixer.Sound(os.path.join("src", "sounds", "typing.mp3"))
     rowc = pygame.mixer.Sound(os.path.join("src", "sounds", "row_complete.wav"))
     lost = pygame.mixer.Sound(os.path.join("src","sounds","lost.wav"))
+
+
+__keyboardKeys = [
+    list("`1234567890=´"),
+    list("qwertyuiop[]"),
+    list("asdfghjkl;'\\"),
+    list("zxcvbnm,./"),
+    list()
+]
+
+
+__codes = [
+    "System.out.println('hello world!');",
+    "#include <stdio.h>",
+    "#include <iostream>",
+    "from kernel import decrypter",
+    "#define TCP_ACK 0x10;",
+    "protect(-1,Hodor);"
+]
+
+
+__typed_text = ""
+__chosencode = random.choice(__codes)
 
 
 def __getPressedKeys():
@@ -50,15 +76,6 @@ def __key(key: str, x, y, size, sizex: int | None = None, label: str | None = No
     t.render_to(screen, f, label if None != label else key.upper(), color2)
 
 
-__keys = [
-    list("`1234567890=´"),
-    list("qwertyuiop[]"),
-    list("asdfghjkl;'\\"),
-    list("zxcvbnm,./"),
-    list()
-]
-
-
 def __enter(x, y, keysize):
     margin = keysize / 20
     pressedkeys = __getPressedKeys()
@@ -81,16 +98,16 @@ def __enter(x, y, keysize):
 def __keyboard(x, y, keysize):
     tx = x
     ty = y
-    for keyrow in __keys:
+    for keyrow in __keyboardKeys:
         for i in range(len(keyrow)):
-            __key(keyrow[i], tx + (keysize * 1.1 if __keys.index(keyrow) != 0 else 0) + (keysize * 1.1) * i, ty,
+            __key(keyrow[i], tx + (keysize * 1.1 if __keyboardKeys.index(keyrow) != 0 else 0) + (keysize * 1.1) * i, ty,
                   keysize)
-        match __keys.index(keyrow):
+        match __keyboardKeys.index(keyrow):
             case 0:
                 __key("backspace",
-                      tx + (keysize * 1.1 if __keys.index(keyrow) != 0 else 0) + (keysize * 1.1) * len(keyrow), ty,
+                      tx + (keysize * 1.1 if __keyboardKeys.index(keyrow) != 0 else 0) + (keysize * 1.1) * len(keyrow), ty,
                       keysize,
-                      sizex=keysize * 2 * 1.05, label="←",font="cambria")
+                      sizex=keysize * 2 * 1.05, label="←", font="cambria")
             case 1:
                 __key("tab", x, ty, keysize, sizex=keysize * 1.5, label="⇄",font="cambria")
                 __enter(tx + (keysize * (len(keyrow) + 1) + (keysize * 0.1 * (len(keyrow) + 1))), ty, keysize)
@@ -121,24 +138,13 @@ def __keyboard(x, y, keysize):
 
 def __keyboardSize(keysize):
     s = 0
-    for i in range(len(__keys)):
-        if len(__keys[i]) + (i / 2) > s:
-            s = len(__keys[i]) + (i / 2)
+    for i in range(len(__keyboardKeys)):
+        if len(__keyboardKeys[i]) + (i / 2) > s:
+            s = len(__keyboardKeys[i]) + (i / 2)
     x = (s + 2) * (keysize * 1.1) - (keysize * 0.2)
-    y = len(__keys) * (keysize * 1.1) - (keysize * 0.2)
+    y = len(__keyboardKeys) * (keysize * 1.1) - (keysize * 0.2)
     return x, y
 
-
-__codes = [
-    "System.out.println('hello world!');",
-    "#include <stdio.h>",
-    "#include <iostream>",
-    "from kernel import decrypter",
-    "#define TCP_ACK 0x10;",
-    "protect(-1,Hodor);"
-]
-
-__typed_text = ""
 
 def __text(x,y,size,text,color,opacity=255):
     font = pygame.font.SysFont("fira code", size // 2)
@@ -149,7 +155,6 @@ def __text(x,y,size,text,color,opacity=255):
     textR.y = y
     screen.blit(text,textR)
 
-__chosencode = random.choice(__codes)
 
 def __textScreen(size):
     margin = size / 20
