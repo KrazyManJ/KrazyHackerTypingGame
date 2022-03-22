@@ -31,6 +31,21 @@ class Sound:
     rowc: Final = _sound("row_complete.wav")
     lost: Final = _sound("lost.wav")
 
+    CHANNEL_ID = 0
+
+    @staticmethod
+    def register_mixer():
+        mixer.init()
+        for i in range(8):
+            mixer.Channel(i).set_volume(0.2)
+        mixer.set_num_channels(9)
+
+    @staticmethod
+    def play(sound: mixer.Sound, volume: float = 0.2):
+        mixer.Channel(Sound.CHANNEL_ID).play(sound)
+        mixer.Channel(Sound.CHANNEL_ID).set_volume(volume)
+        Sound.CHANNEL_ID += Sound.CHANNEL_ID * -1 if Sound.CHANNEL_ID >= 7 else 1
+
 
 class Keyboard:
 
@@ -208,17 +223,15 @@ def main():
     time.set_timer(BLINK_EVENT, 500)
     clock = pygame.time.Clock()
     kx, ky = win.get_rect().centerx - Keyboard.size()[0] // 2, win.get_rect().centery - Keyboard.size()[1] // 2
-    channelid = 0
-    mixer.init()
-    for i in range(8):
-        mixer.Channel(i).set_volume(0.2)
-    mixer.set_num_channels(9)
+
     run = True
     while run:
         clock.tick(60)
         win.fill(Color.black)
+
         Keyboard.draw(kx, ky * 1.7, Color.green)
         Screen.draw(kx, ky, typed_text)
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
@@ -247,9 +260,7 @@ def main():
                         if len(event.unicode) > 0 and ord(event.unicode) > 31:
                             typed_text += event.unicode
                 if len(typed_text) != ln:
-                    mixer.Channel(channelid).play(Sound.key)
-                    mixer.Channel(channelid).set_volume(random.uniform(0.1, 0.2))
-                    channelid += channelid * -1 if channelid >= 7 else 1
+                    Sound.play(Sound.key, volume=random.uniform(0.1, 0.2))
                     Screen.update_caret()
         display.update()
     pygame.quit()
