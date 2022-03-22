@@ -50,21 +50,35 @@ class Sound:
 class Keyboard:
 
     @staticmethod
-    def draw(x: int, y: int, color: tuple[int, int, int]):
+    def init(size):
+        Keyboard.KEY_SIZE = size
+        Keyboard.KEY_THICK = Keyboard.KEY_SIZE // 20
+        Keyboard.KEY_GAP = Keyboard.KEY_SIZE // 10
+        Keyboard.KEY_LABEL_SIZE = Keyboard.KEY_SIZE // 2.5
+        Keyboard.is_initialized()
+
+    @staticmethod
+    def is_initialized():
+        if Keyboard.KEY_SIZE <= 0:
+            raise ValueError("Keyboard is not initialized properly! Initialize it with positive number first!")
+
+    @staticmethod
+    def draw(surface, x: int, y: int, color: tuple[int, int, int]):
+        Keyboard.is_initialized()
         tx = x
         for rows in Keyboard.LAYOUT:
             for key in rows:
                 if type(key) == list:
                     for k in key:
-                        Keyboard.__key(k, tx, y, color)
+                        Keyboard.__key(surface, k, tx, y, color, Keyboard.KEY_SIZE)
                         tx += Keyboard.KEY_SIZE + Keyboard.KEY_GAP
                 elif type(key) == dict:
                     s = key["size"] * Keyboard.KEY_SIZE + (key["size"] - 1) * Keyboard.KEY_GAP
-                    Keyboard.__key(key["name"], tx, y, color, s, label=key["label"], font=key["font"],
+                    Keyboard.__key(surface, key["name"], tx, y, color, s, label=key["label"], font=key["font"],
                                    pr=Keyboard.__pressed(key["key"]))
                     tx += s + Keyboard.KEY_GAP
                 elif key == "enter":
-                    Keyboard.__enter(tx, y, color)
+                    Keyboard.__enter(surface, tx, y, color)
             tx = x
             y += Keyboard.KEY_GAP + Keyboard.KEY_SIZE
 
@@ -91,10 +105,10 @@ class Keyboard:
     def __a(name, size, label, key=None, font="fira code") -> dict:
         return {"name": name, "size": size, "label": label, "font": font, "key": key}
 
-    KEY_SIZE: Final = win.get_rect().width * 0.0455
-    KEY_THICK: Final = KEY_SIZE // 20
-    KEY_GAP: Final = KEY_SIZE // 10
-    KEY_LABEL_SIZE: Final = KEY_SIZE // 2.5
+    KEY_SIZE: int = 0
+    KEY_THICK: int = KEY_SIZE // 20
+    KEY_GAP: int = KEY_SIZE // 10
+    KEY_LABEL_SIZE: int = KEY_SIZE // 2.5
     LAYOUT: Final = [
         [list("`1234567890=´"), __a("backspace", 2, "←", key=pygame.K_BACKSPACE, font="cambria")],
         [__a("tab", 1.5, "⇄", font="cambria"), list("qwertyuiop[]"), "enter"],
@@ -118,14 +132,15 @@ class Keyboard:
         return tkey
 
     @staticmethod
-    def __key(key, x, y, color, sx=KEY_SIZE, label=None, pr=None, font="fira code"):
-        rect = GraphUtils.draw_rect(x, y, sx, Keyboard.KEY_SIZE, color, Keyboard.KEY_THICK,
+    def __key(surface, key, x, y, color, sx, label=None, pr=None, font="fira code"):
+        rect = GraphUtils.draw_rect(surface, x, y, sx, Keyboard.KEY_SIZE, color, Keyboard.KEY_THICK,
                                     invert=Keyboard.__getpressedkeys().__contains__(key) or pr)
-        GraphUtils.draw_text_f(font, label if label is not None else key.upper(), Keyboard.KEY_LABEL_SIZE, rect,
+        GraphUtils.draw_text_f(surface, font, label if label is not None else key.upper(),
+                               Keyboard.KEY_LABEL_SIZE, rect,
                                Color.black if Keyboard.__getpressedkeys().__contains__(key) or pr else color)
 
     @staticmethod
-    def __enter(x, y, color):
+    def __enter(surface, x, y, color):
         width = 1.5
 
         colors = [color, Color.black] if Keyboard.__getpressedkeys().__contains__("return") else [Color.black, color]
@@ -134,17 +149,17 @@ class Keyboard:
         rect = Rect(x, y, lowerwidth, Keyboard.KEY_SIZE * 2 + Keyboard.KEY_GAP)
         recti = Rect(x + Keyboard.KEY_THICK, y + Keyboard.KEY_THICK, rect.width - Keyboard.KEY_THICK * 2,
                      rect.height - Keyboard.KEY_THICK * 2)
-        rect2 = GraphUtils.draw_rect(x, y, width * Keyboard.KEY_SIZE + (width - 1) * Keyboard.KEY_GAP,
+        rect2 = GraphUtils.draw_rect(surface, x, y, width * Keyboard.KEY_SIZE + (width - 1) * Keyboard.KEY_GAP,
                                      Keyboard.KEY_SIZE, colors[1], Keyboard.KEY_THICK)
         cord = list(rect2.topright)
         cord[0] = cord[0] + Keyboard.KEY_THICK
         cord[1] = cord[1] - Keyboard.KEY_THICK
         rect.topright = tuple(cord)
         recti.center = rect.center
-        gfxdraw.box(win, rect, colors[1])
-        gfxdraw.box(win, recti, colors[0])
-        gfxdraw.box(win, rect2, colors[0])
-        GraphUtils.draw_text_f("cambria", "⏎", Keyboard.KEY_LABEL_SIZE, rect, colors[1])
+        gfxdraw.box(surface, rect, colors[1])
+        gfxdraw.box(surface, recti, colors[0])
+        gfxdraw.box(surface, rect2, colors[0])
+        GraphUtils.draw_text_f(surface, "cambria", "⏎", Keyboard.KEY_LABEL_SIZE, rect, colors[1])
 
     @staticmethod
     def __pressed(modd) -> bool:
@@ -158,15 +173,15 @@ class Keyboard:
 
 class GraphUtils:
     @staticmethod
-    def draw_rect(x, y, width, height, color: tuple[int, int, int], thickness, invert: bool = False) -> Rect:
+    def draw_rect(surface, x, y, width, height, color: tuple[int, int, int], thickness, invert: bool = False) -> Rect:
         if invert:
             rect = Rect(x + thickness, y + thickness, width - thickness * 2, height - thickness * 2)
-            gfxdraw.box(win, rect, color)
+            gfxdraw.box(surface, rect, color)
             return rect
         else:
             rect = Rect(x, y, width, height)
             for i in range(round(thickness)):
-                gfxdraw.rectangle(win, rect, color)
+                gfxdraw.rectangle(surface, rect, color)
                 rect.x += 1
                 rect.y += 1
                 rect.width -= 2
@@ -174,11 +189,11 @@ class GraphUtils:
             return rect
 
     @staticmethod
-    def draw_text_f(font, text, size, rect, color):
+    def draw_text_f(surface, font, text, size, rect, color):
         ft = freetype.SysFont(font, size)
         r = ft.get_rect(text, size=size)
         r.center = rect.center
-        ft.render_to(win, r, text, color)
+        ft.render_to(surface, r, text, color)
 
 
 class Screen:
@@ -188,10 +203,10 @@ class Screen:
     CARET_CURRENT_COLOR = next(CARET_CYCLE)
 
     @staticmethod
-    def draw(x, y, typedtext):
-        rect = GraphUtils.draw_rect(x, y * 0.3, Keyboard.size()[0], Keyboard.size()[1] / 2, Color.green,
+    def draw(surface, x, y, typedtext):
+        rect = GraphUtils.draw_rect(surface, x, y * 0.3, Keyboard.size()[0], Keyboard.size()[1] / 2, Color.green,
                                     Keyboard.KEY_THICK)
-        console_rect = GraphUtils.draw_rect(rect.bottomleft[0] - Keyboard.KEY_THICK,
+        console_rect = GraphUtils.draw_rect(surface, rect.bottomleft[0] - Keyboard.KEY_THICK,
                                             rect.bottomleft[1] - Keyboard.KEY_THICK, Keyboard.size()[0],
                                             Keyboard.KEY_SIZE,
                                             Color.green, Keyboard.KEY_THICK)
@@ -201,11 +216,11 @@ class Screen:
         text_rect = text.get_rect()
         text_rect.midleft = console_rect.midleft
         text_rect.x = text_rect.x + Keyboard.KEY_GAP
-        win.blit(text, text_rect)
+        surface.blit(text, text_rect)
 
         cursor = Rect(x, y, Keyboard.KEY_LABEL_SIZE // 2, Keyboard.KEY_LABEL_SIZE)
         cursor.midleft = text_rect.midright
-        gfxdraw.box(win, cursor, Screen.CARET_CURRENT_COLOR)
+        gfxdraw.box(surface, cursor, Screen.CARET_CURRENT_COLOR)
 
     @staticmethod
     def update_caret():
@@ -217,11 +232,13 @@ class Screen:
         Screen.CARET_CURRENT_COLOR = next(Screen.CARET_CYCLE)
 
 
-def main():
+if __name__ == "__main__":
     typed_text = ""
     BLINK_EVENT = pygame.USEREVENT + 0
     time.set_timer(BLINK_EVENT, 500)
     clock = pygame.time.Clock()
+
+    Keyboard.init(win.get_rect().width * 0.0455)
     kx, ky = win.get_rect().centerx - Keyboard.size()[0] // 2, win.get_rect().centery - Keyboard.size()[1] // 2
 
     run = True
@@ -229,8 +246,8 @@ def main():
         clock.tick(60)
         win.fill(Color.black)
 
-        Keyboard.draw(kx, ky * 1.7, Color.green)
-        Screen.draw(kx, ky, typed_text)
+        Keyboard.draw(win, kx, ky * 1.7, Color.green)
+        Screen.draw(win, kx, ky, typed_text)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -244,16 +261,6 @@ def main():
                         run = False
                     case pygame.K_BACKSPACE:
                         typed_text = typed_text[:-1]
-                    # case pygame.K_RETURN:
-                    #     if __typed_text == __chosencode:
-                    #         mixer.Channel(8).play(__S.rowc)
-                    #         __typed_text = ""
-                    #         __chosencode = random.choice(__codes)
-                    #     else:
-                    #         mixer.Channel(8).set_volume(0.2)
-                    #         mixer.Channel(8).play(__S.lost)
-                    #         clock.tick(1)
-                    #         run = False
                     case pygame.K_DELETE:
                         pass
                     case _:
@@ -264,7 +271,3 @@ def main():
                     Screen.update_caret()
         display.update()
     pygame.quit()
-
-
-if __name__ == "__main__":
-    main()
