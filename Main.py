@@ -33,6 +33,45 @@ class Sound:
 
 
 class Keyboard:
+
+    @staticmethod
+    def draw(x: int, y: int, color: tuple[int, int, int]):
+        tx = x
+        for rows in Keyboard.LAYOUT:
+            for key in rows:
+                if type(key) == list:
+                    for k in key:
+                        Keyboard.__key(k, tx, y, color)
+                        tx += Keyboard.KEY_SIZE + Keyboard.KEY_GAP
+                elif type(key) == dict:
+                    s = key["size"] * Keyboard.KEY_SIZE + (key["size"] - 1) * Keyboard.KEY_GAP
+                    Keyboard.__key(key["name"], tx, y, color, s, label=key["label"], font=key["font"],
+                                   pr=Keyboard.__pressed(key["key"]))
+                    tx += s + Keyboard.KEY_GAP
+                elif key == "enter":
+                    Keyboard.__enter(tx, y, color)
+            tx = x
+            y += Keyboard.KEY_GAP + Keyboard.KEY_SIZE
+
+    @staticmethod
+    def size() -> tuple[float, float]:
+        s = 0
+        for i in range(len(Keyboard.LAYOUT)):
+            s = Keyboard.rowsize(i) if Keyboard.rowsize(i) > s else s
+        x = s + Keyboard.KEY_GAP
+        y = len(Keyboard.LAYOUT) * Keyboard.KEY_SIZE + ((len(Keyboard.LAYOUT) - 1) * Keyboard.KEY_GAP)
+        return x, y
+
+    @staticmethod
+    def rowsize(index) -> float:
+        t = 0
+        for key in Keyboard.LAYOUT[index]:
+            if type(key) is list:
+                t += len(key) * Keyboard.KEY_SIZE + (len(key) - 1) * Keyboard.KEY_GAP
+            elif type(key) is dict:
+                t += key["size"] * Keyboard.KEY_SIZE + (key["size"] - 1) * Keyboard.KEY_GAP
+        return t
+
     @staticmethod
     def __a(name, size, label, key=None, font="fira code") -> dict:
         return {"name": name, "size": size, "label": label, "font": font, "key": key}
@@ -101,44 +140,6 @@ class Keyboard:
         else:
             return Keyboard.__getpressedkeys().__contains__(modd)
 
-    @staticmethod
-    def draw(x: int, y: int, color: tuple[int, int, int]):
-        tx = x
-        for rows in Keyboard.LAYOUT:
-            for key in rows:
-                if type(key) == list:
-                    for k in key:
-                        Keyboard.__key(k, tx, y, color)
-                        tx += Keyboard.KEY_SIZE + Keyboard.KEY_GAP
-                elif type(key) == dict:
-                    s = key["size"] * Keyboard.KEY_SIZE + (key["size"] - 1) * Keyboard.KEY_GAP
-                    Keyboard.__key(key["name"], tx, y, color, s, label=key["label"], font=key["font"],
-                                   pr=Keyboard.__pressed(key["key"]))
-                    tx += s + Keyboard.KEY_GAP
-                elif key == "enter":
-                    Keyboard.__enter(tx, y, color)
-            tx = x
-            y += Keyboard.KEY_GAP + Keyboard.KEY_SIZE
-
-    @staticmethod
-    def size() -> tuple[float, float]:
-        s = 0
-        for i in range(len(Keyboard.LAYOUT)):
-            s = Keyboard.rowsize(i) if Keyboard.rowsize(i) > s else s
-        x = s + Keyboard.KEY_GAP
-        y = len(Keyboard.LAYOUT) * Keyboard.KEY_SIZE + ((len(Keyboard.LAYOUT) - 1) * Keyboard.KEY_GAP)
-        return x, y
-
-    @staticmethod
-    def rowsize(index) -> float:
-        t = 0
-        for key in Keyboard.LAYOUT[index]:
-            if type(key) is list:
-                t += len(key) * Keyboard.KEY_SIZE + (len(key) - 1) * Keyboard.KEY_GAP
-            elif type(key) is dict:
-                t += key["size"] * Keyboard.KEY_SIZE + (key["size"] - 1) * Keyboard.KEY_GAP
-        return t
-
 
 class GraphUtils:
     @staticmethod
@@ -165,33 +166,45 @@ class GraphUtils:
         ft.render_to(win, r, text, color)
 
 
-BLINK_EVENT = pygame.USEREVENT + 0
-BLINK_SURFACES = cycle([Color.green, Color.black])
-BLINK_SURFACE = next(BLINK_SURFACES)
+class Screen:
+    CARET_COLORS: Final = [Color.green, Color.black]
+    CARET_CYCLE: Final = cycle(CARET_COLORS)
 
-__typed_text = ""
+    CARET_CURRENT_COLOR = next(CARET_CYCLE)
 
+    @staticmethod
+    def draw(x, y, typedtext):
+        rect = GraphUtils.draw_rect(x, y * 0.3, Keyboard.size()[0], Keyboard.size()[1] / 2, Color.green,
+                                    Keyboard.KEY_THICK)
+        console_rect = GraphUtils.draw_rect(rect.bottomleft[0] - Keyboard.KEY_THICK,
+                                            rect.bottomleft[1] - Keyboard.KEY_THICK, Keyboard.size()[0],
+                                            Keyboard.KEY_SIZE,
+                                            Color.green, Keyboard.KEY_THICK)
 
-def __codescreen(x, y):
-    rect = GraphUtils.draw_rect(x, y * 0.3, Keyboard.size()[0], Keyboard.size()[1] / 2, Color.green, Keyboard.KEY_THICK)
-    console_rect = GraphUtils.draw_rect(rect.bottomleft[0] - Keyboard.KEY_THICK,
-                                        rect.bottomleft[1] - Keyboard.KEY_THICK, Keyboard.size()[0], Keyboard.KEY_SIZE,
-                                        Color.green, Keyboard.KEY_THICK)
+        font = pygame.font.SysFont("fira code", round(Keyboard.KEY_LABEL_SIZE))
+        text = font.render(typedtext, True, Color.white)
+        text_rect = text.get_rect()
+        text_rect.midleft = console_rect.midleft
+        text_rect.x = text_rect.x + Keyboard.KEY_GAP
+        win.blit(text, text_rect)
 
-    font = pygame.font.SysFont("fira code", round(Keyboard.KEY_LABEL_SIZE))
-    text = font.render(__typed_text, True, Color.white)
-    text_rect = text.get_rect()
-    text_rect.midleft = console_rect.midleft
-    text_rect.x = text_rect.x + Keyboard.KEY_GAP
-    win.blit(text, text_rect)
+        cursor = Rect(x, y, Keyboard.KEY_LABEL_SIZE // 2, Keyboard.KEY_LABEL_SIZE)
+        cursor.midleft = text_rect.midright
+        gfxdraw.box(win, cursor, Screen.CARET_CURRENT_COLOR)
 
-    cursor = Rect(x, y, Keyboard.KEY_LABEL_SIZE // 2, Keyboard.KEY_LABEL_SIZE)
-    cursor.midleft = text_rect.midright
-    gfxdraw.box(win, cursor, BLINK_SURFACE)
+    @staticmethod
+    def update_caret():
+        Screen.CARET_CURRENT_COLOR = Screen.CARET_COLORS[0]
+        pass
+
+    @staticmethod
+    def switch_caret():
+        Screen.CARET_CURRENT_COLOR = next(Screen.CARET_CYCLE)
 
 
 def main():
-    global __typed_text, BLINK_SURFACE
+    typed_text = ""
+    BLINK_EVENT = pygame.USEREVENT + 0
     time.set_timer(BLINK_EVENT, 500)
     clock = pygame.time.Clock()
     kx, ky = win.get_rect().centerx - Keyboard.size()[0] // 2, win.get_rect().centery - Keyboard.size()[1] // 2
@@ -205,19 +218,19 @@ def main():
         clock.tick(60)
         win.fill(Color.black)
         Keyboard.draw(kx, ky * 1.7, Color.green)
-        __codescreen(kx, ky)
+        Screen.draw(kx, ky, typed_text)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
             if event.type == BLINK_EVENT:
-                BLINK_SURFACE = next(BLINK_SURFACES)
+                Screen.switch_caret()
             elif event.type == pygame.KEYDOWN:
-                ln = len(__typed_text)
+                ln = len(typed_text)
                 match event.key:
                     case pygame.K_ESCAPE:
                         run = False
                     case pygame.K_BACKSPACE:
-                        __typed_text = __typed_text[:-1]
+                        typed_text = typed_text[:-1]
                     # case pygame.K_RETURN:
                     #     if __typed_text == __chosencode:
                     #         mixer.Channel(8).play(__S.rowc)
@@ -232,12 +245,12 @@ def main():
                         pass
                     case _:
                         if len(event.unicode) > 0 and ord(event.unicode) > 31:
-                            __typed_text += event.unicode
-                if len(__typed_text) != ln:
+                            typed_text += event.unicode
+                if len(typed_text) != ln:
                     mixer.Channel(channelid).play(Sound.key)
                     mixer.Channel(channelid).set_volume(random.uniform(0.1, 0.2))
                     channelid += channelid * -1 if channelid >= 7 else 1
-                    BLINK_SURFACE = Color.green
+                    Screen.update_caret()
         display.update()
     pygame.quit()
 
